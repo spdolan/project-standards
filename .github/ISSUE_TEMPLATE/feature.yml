@@ -1,0 +1,21 @@
+name: Feature or change
+description: Something new, or a change to how something works
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or impossible today, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What you'd change. Rough is fine.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: How we'd know it works. Checks an agent or a test could verify are best.

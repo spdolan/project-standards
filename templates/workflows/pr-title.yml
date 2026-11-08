@@ -1,0 +1,14 @@
+name: PR title
+
+# Calls spdolan/project-standards's conventional PR-title check. Squash merges make the title the commit
+# message release-please reads.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  title:
+    uses: spdolan/project-standards/.github/workflows/pr-title.yml@v0.1

@@ -1,0 +1,34 @@
+# mise.toml: the tool versions and the tasks CI runs. Locally: `mise install` once, then `mise run check`.
+# Keep versions the repository already pins; for new tools use `mise use --pin <tool>@latest`.
+[tools]
+bun = "1.4.4"
+actionlint = "1.7.12"
+shellcheck = "0.11.0"
+
+[tasks.install]
+description = "Install dependencies from the lockfile"
+run = "bun install --frozen-lockfile"
+
+[tasks.lint]
+description = "Format check, lint, typecheck, workflow and shell lint (no writes)"
+depends = ["install"]
+run = [
+  "bunx biome ci .",
+  "bun run typecheck",
+  "actionlint",
+  "git ls-files -z '*.sh' | xargs -0 -r shellcheck",
+]
+
+[tasks.fmt]
+description = "Format and apply safe fixes"
+depends = ["install"]
+run = "bunx biome check --write ."
+
+[tasks.test]
+description = "Unit tests; JUnit report in reports/"
+depends = ["install"]
+run = ["mkdir -p reports", "bun test --reporter=junit --reporter-outfile=reports/junit.xml"]
+
+[tasks.check]
+description = "Everything CI runs"
+depends = ["lint", "test"]

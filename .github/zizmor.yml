@@ -1,0 +1,5 @@
+rules:
+  # GitHub's `uses: $/...` self-repository syntax (July 2026) is preferred, but actionlint 1.7.12
+  # rejects it. Switch the two local calls in ci.yml and release.yml once actionlint supports it.
+  self-repository:
+    disable: true

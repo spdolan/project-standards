@@ -1,0 +1,42 @@
+name: Release
+
+# Calls spdolan/project-standards's release-please workflow. Needs release-please-config.json and
+# .release-please-manifest.json. Drop line-tag for applications nobody pins.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    uses: spdolan/project-standards/.github/workflows/release-please.yml@v0.1
+    with:
+      line-tag: true
+    secrets:
+      RELEASE_APP_CLIENT_ID: ${{ secrets.FACTORY_RELEASE_APP_CLIENT_ID }}
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.FACTORY_RELEASE_APP_PRIVATE_KEY }}
+
+  # publish:
+  #   needs: release
+  #   if: needs.release.outputs.release_created == 'true'
+  #   runs-on: ubuntu-24.04
+  #   timeout-minutes: 15
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   steps:
+  #     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+  #       with:
+  #         ref: ${{ needs.release.outputs.tag_name }}
+  #         persist-credentials: false
+  #     - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+  #     - run: mise run publish

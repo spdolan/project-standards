@@ -1,0 +1,26 @@
+name: Release
+
+# Releases this repository through its own reusable workflow. Callers pin the line tag it moves
+# (@v0.1), so a non-breaking fix here reaches every repository on its next run.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/release-please.yml
+    with:
+      line-tag: true
+    secrets:
+      RELEASE_APP_CLIENT_ID: ${{ secrets.FACTORY_RELEASE_APP_CLIENT_ID }}
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.FACTORY_RELEASE_APP_PRIVATE_KEY }}

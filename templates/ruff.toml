@@ -1,0 +1,13 @@
+# Starting ruff config. In a project with pyproject.toml, move these under [tool.ruff],
+# [tool.ruff.lint] and [tool.ruff.format]. Set target-version from requires-python.
+line-length = 100
+target-version = "py313"
+extend-exclude = ["**/gen"]
+
+[lint]
+# pycodestyle errors, pyflakes, isort, bugbear, pyupgrade, simplify, ruff's own rules.
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = []
+
+[format]
+docstring-code-format = true

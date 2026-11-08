@@ -1,0 +1,55 @@
+name: PR title
+
+# PRs are squash-merged, so the title becomes the commit message, and release-please reads those
+# messages to pick the next version. This checks the title is a conventional commit.
+#
+# Reusable: other repositories call it from a pull_request-triggered workflow:
+#
+#   on:
+#     pull_request:
+#       types: [opened, edited, synchronize, reopened]
+#   permissions: {}
+#   jobs:
+#     title:
+#       uses: spdolan/project-standards/.github/workflows/pr-title.yml@v0.1
+#
+# The pull_request trigger below runs the same check on this repository's own PRs.
+
+on:
+  workflow_call:
+    inputs:
+      types:
+        description: Allowed commit types, separated by |
+        type: string
+        default: feat|fix|chore|docs|ci|refactor|test|perf|build|style|revert
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  title:
+    name: Conventional title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          TYPES: ${{ inputs.types || 'feat|fix|chore|docs|ci|refactor|test|perf|build|style|revert' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TITLE" ]; then
+            echo "::error::No pull request title: call this workflow from a pull_request event."
+            exit 1
+          fi
+          if [[ "$TITLE" =~ ^($TYPES)(\([a-z0-9._/-]+\))?(!)?:\ [^[:space:]].*$ ]] || [[ "$TITLE" =~ ^Revert\ \".+\"$ ]]; then
+            echo "OK: $TITLE"
+            exit 0
+          fi
+          {
+            echo "::error::PR title must be a conventional commit: <type>(<optional scope>)<optional !>: <summary>"
+            echo "Types: ${TYPES//|/, }. Examples: 'fix(parser): …', 'feat: …', 'feat!: …' (breaking)."
+            echo "Got: $TITLE"
+          } >&2
+          exit 1
