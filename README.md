@@ -115,7 +115,7 @@ Publish from a job in the caller gated on these outputs, not from a tag-triggere
 
 ## PR template and issue forms
 
-`.github/pull_request_template.md` and `.github/ISSUE_TEMPLATE/` (bug, feature) are this repository's own and the copies other repositories take: copy them into the repository's `.github/` and adapt the testing checklist to its commands. GitHub would apply them account-wide only from a repository named exactly `.github`; this one is named for what it holds instead, so each repository carries its own copy (the `repo-standards` skill does the copying).
+`.github/pull_request_template.md` and `.github/ISSUE_TEMPLATE/` (bug, feature) are this repository's own and the copies other repositories take: copy them into the repository's `.github/` and adapt the testing checklist to its commands. GitHub applies them account-wide only from a public repository named exactly `.github`, so [spdolan/.github](https://github.com/spdolan/.github) mirrors them: its weekly sync workflow copies these paths from this repository's latest release. Edit them here, never there. A repository that needs different templates carries its own copy (the `repo-standards` skill does the copying), which replaces the default.
 
 ## Renovate preset
 
