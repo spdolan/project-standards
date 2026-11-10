@@ -1,0 +1,22 @@
+# mise.toml: the tool versions and the tasks CI runs. Locally: `mise install` once, then `mise run check`.
+[tools]
+go = "1.27.3"
+golangci-lint = "2.15.0"
+gotestsum = "1.13.0"
+actionlint = "1.7.12"
+
+[tasks.lint]
+description = "Format check, lint, workflow lint (no writes)"
+run = ["golangci-lint fmt --diff", "golangci-lint run", "actionlint"]
+
+[tasks.fmt]
+description = "Format"
+run = "golangci-lint fmt"
+
+[tasks.test]
+description = "Unit tests; JUnit report in reports/"
+run = ["mkdir -p reports", "gotestsum --junitfile reports/junit.xml -- ./..."]
+
+[tasks.check]
+description = "Everything CI runs"
+depends = ["lint", "test"]

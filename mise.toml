@@ -1,0 +1,10 @@
+# Tools and tasks for this repository. `mise install`, then `mise run lint`. CI runs the same task
+# through .github/workflows/ci-mise.yml.
+[tools]
+actionlint = "1.7.12"
+shellcheck = "0.11.0"
+uv = "0.13.7"
+
+[tasks.lint]
+description = "Lint workflows: actionlint (with shellcheck on run blocks), zizmor"
+run = ["actionlint", "uvx zizmor@1.32.0 --offline .github/workflows templates/workflows"]

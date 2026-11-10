@@ -1,0 +1,20 @@
+name: ci
+
+# Calls spdolan/project-standards's reusable mise CI: `mise run lint`, `mise run test`, JUnit summary.
+# Inputs: tasks, working-directory, report-paths, runs-on, timeout-minutes (see its header).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: spdolan/project-standards/.github/workflows/ci-mise.yml@v0.1

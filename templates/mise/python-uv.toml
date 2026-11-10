@@ -1,0 +1,35 @@
+# mise.toml: the tool versions and the tasks CI runs. Locally: `mise install` once, then `mise run check`.
+# ruff and pytest are dev dependencies in pyproject.toml ([dependency-groups] dev), run through uv.
+[tools]
+python = "3.13"
+uv = "0.13.7"
+actionlint = "1.7.12"
+shellcheck = "0.11.0"
+
+[tasks.install]
+description = "Install dependencies from uv.lock"
+run = "uv sync --locked"
+
+[tasks.lint]
+description = "Format check, lint, workflow and shell lint (no writes)"
+depends = ["install"]
+run = [
+  "uv run ruff format --check .",
+  "uv run ruff check .",
+  "actionlint",
+  "git ls-files -z '*.sh' | xargs -0 -r shellcheck",
+]
+
+[tasks.fmt]
+description = "Format and apply safe fixes"
+depends = ["install"]
+run = ["uv run ruff format .", "uv run ruff check --fix ."]
+
+[tasks.test]
+description = "Unit tests; JUnit report in reports/"
+depends = ["install"]
+run = "uv run pytest --junitxml=reports/junit.xml"
+
+[tasks.check]
+description = "Everything CI runs"
+depends = ["lint", "test"]

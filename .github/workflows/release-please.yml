@@ -1,0 +1,138 @@
+name: release-please
+
+# Reusable release workflow. release-please keeps a release PR open from the conventional PR titles
+# merged to the default branch; merging it bumps versions, writes changelogs, tags and publishes a
+# GitHub release. Then, if line-tag is on, each released package's line tag moves (v0.N before 1.0,
+# vN after; prefixed with the component when tags carry one, as in ts-v0.2), so consumers can pin a
+# line and get non-breaking releases.
+#
+#   on:
+#     push:
+#       branches: [main]
+#     workflow_dispatch:
+#   concurrency:
+#     group: release
+#     cancel-in-progress: false
+#   permissions:
+#     contents: write          # the called workflow can't have more than the caller grants
+#     pull-requests: write
+#   jobs:
+#     release:
+#       uses: spdolan/project-standards/.github/workflows/release-please.yml@v0.1
+#       with:
+#         line-tag: true
+#       secrets:
+#         RELEASE_APP_CLIENT_ID: ${{ secrets.FACTORY_RELEASE_APP_CLIENT_ID }}
+#         RELEASE_APP_PRIVATE_KEY: ${{ secrets.FACTORY_RELEASE_APP_PRIVATE_KEY }}
+#     publish:
+#       needs: release
+#       if: needs.release.outputs.release_created == 'true'
+#       ...
+#
+# Token: with the two app secrets, each run mints a short-lived GitHub App installation token, so
+# CI runs on release PRs. Without them it uses GITHUB_TOKEN, which works, but GitHub doesn't start
+# workflows on PRs or tags that GITHUB_TOKEN creates. Publish from a job in the caller (as above),
+# not from a tag-triggered workflow.
+#
+# Repository settings this relies on: squash merges with the PR title as the commit message, and
+# "Allow GitHub Actions to create and approve pull requests" (for the GITHUB_TOKEN fallback).
+
+on:
+  workflow_call:
+    inputs:
+      config-file:
+        type: string
+        default: release-please-config.json
+      manifest-file:
+        type: string
+        default: .release-please-manifest.json
+      line-tag:
+        description: Move a line tag (v0.N / vN, component-prefixed if tags are) to each new release
+        type: boolean
+        default: false
+    secrets:
+      RELEASE_APP_CLIENT_ID:
+        required: false
+      RELEASE_APP_PRIVATE_KEY:
+        required: false
+    outputs:
+      release_created:
+        description: "'true' if the root package (path .) was released"
+        value: ${{ jobs.release.outputs.release_created }}
+      releases_created:
+        description: "'true' if any package was released"
+        value: ${{ jobs.release.outputs.releases_created }}
+      tag_name:
+        description: The root package's new tag
+        value: ${{ jobs.release.outputs.tag_name }}
+      paths_released:
+        description: JSON array of released package paths
+        value: ${{ jobs.release.outputs.paths_released }}
+      outputs:
+        description: "All release-please outputs as JSON; per package: fromJSON(...)['<path>--release_created']"
+        value: ${{ jobs.release.outputs.all }}
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Release PR and tags
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # Used only on the GITHUB_TOKEN fallback; the app token carries its own permissions.
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      releases_created: ${{ steps.rp.outputs.releases_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      paths_released: ${{ steps.rp.outputs.paths_released }}
+      all: ${{ toJSON(steps.rp.outputs) }}
+    env:
+      HAS_RELEASE_APP: ${{ secrets.RELEASE_APP_CLIENT_ID != '' && secrets.RELEASE_APP_PRIVATE_KEY != '' }}
+    steps:
+      - id: app
+        if: env.HAS_RELEASE_APP == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - id: rp
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app.outputs.token || github.token }}
+          config-file: ${{ inputs.config-file }}
+          manifest-file: ${{ inputs.manifest-file }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.line-tag && steps.rp.outputs.releases_created == 'true'
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Move the line tags
+        if: inputs.line-tag && steps.rp.outputs.releases_created == 'true'
+        env:
+          OUTPUTS: ${{ toJSON(steps.rp.outputs) }}
+          # The token is used for the push only; checkout above stores no credentials.
+          TOKEN: ${{ steps.app.outputs.token || github.token }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --tags --force "$remote"
+          # The root package's outputs are unprefixed; every other package's are "<path>--<name>".
+          for path in $(jq -r '.paths_released | fromjson | .[]' <<<"$OUTPUTS"); do
+            get() { jq -r --arg k "$path--$1" --arg n "$1" --arg p "$path" '.[$k] // (if $p == "." then .[$n] else empty end) // ""' <<<"$OUTPUTS"; }
+            tag=$(get tag_name); major=$(get major); minor=$(get minor)
+            if [ -z "$tag" ] || [ -z "$major" ]; then echo "::warning::no tag outputs for $path; line tag not moved"; continue; fi
+            prefix="${tag%v*}"   # "" for v1.2.3, "ts-" for ts-v1.2.3
+            if [ "$major" = 0 ]; then line="${prefix}v0.$minor"; else line="${prefix}v$major"; fi
+            git tag -f "$line" "$tag^{commit}"
+            git push -f "$remote" "refs/tags/$line"
+            echo "Released $tag; $line now points to it." | tee -a "$GITHUB_STEP_SUMMARY"
+          done

@@ -1,0 +1,22 @@
+name: ci
+
+# This repository's own CI, through its own reusable workflow: actionlint, zizmor and shellcheck
+# over the workflows (mise.toml `lint`). A change to ci-mise.yml is exercised here before release.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: ./.github/workflows/ci-mise.yml
+    with:
+      tasks: lint

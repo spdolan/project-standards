@@ -1,0 +1,80 @@
+name: ci (mise)
+
+# Reusable CI for any language: mise installs the toolchain pinned in the caller's mise.toml and
+# runs the caller's tasks (default `lint` then `test`), the same commands a developer runs locally.
+# JUnit files the tasks write (default reports/junit*.xml) are summarised in the job summary,
+# pass or fail.
+#
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
+#   permissions:
+#     contents: read
+#   concurrency:
+#     group: ci-${{ github.ref }}
+#     cancel-in-progress: true
+#   jobs:
+#     check:
+#       uses: spdolan/project-standards/.github/workflows/ci-mise.yml@v0.1
+#
+# Repositories that need service containers (Postgres), system packages or a private registry keep
+# their own CI and use jdx/mise-action directly; reusable workflows can't take extra services.
+
+on:
+  workflow_call:
+    inputs:
+      tasks:
+        description: mise tasks to run in order, separated by spaces
+        type: string
+        default: lint test
+      working-directory:
+        description: Directory holding mise.toml
+        type: string
+        default: .
+      report-paths:
+        description: JUnit files to summarise, relative to working-directory
+        type: string
+        default: reports/junit*.xml
+      runs-on:
+        type: string
+        default: ubuntu-24.04
+      timeout-minutes:
+        type: number
+        default: 15
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          working_directory: ${{ inputs.working-directory }}
+
+      - name: mise run ${{ inputs.tasks }}
+        env:
+          TASKS: ${{ inputs.tasks }}
+        run: |
+          set -euo pipefail
+          for task in $TASKS; do
+            echo "::group::mise run $task"
+            mise run "$task"
+            echo "::endgroup::"
+          done
+
+      - name: Test report
+        if: ${{ !cancelled() && hashFiles(format('{0}/{1}', inputs.working-directory, inputs.report-paths)) != '' }}
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5 # v2.6
+        with:
+          paths: ${{ inputs.working-directory }}/${{ inputs.report-paths }}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "spdolan's shared Renovate preset: weekly grouped updates with conventional chore(deps) titles, so they pass the PR-title check and don't cut a release on their own. Use with \"extends\": [\"github>spdolan/project-standards\"]. Packages bumped by spdolan/factory's dependency-bump stage go in the repository's own ignoreDeps (for example \"@spdolan/plinth\").",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits"
+  ],
+  "semanticCommitType": "chore",
+  "schedule": [
+    "* 0-5 * * 1"
+  ],
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "description": "One PR for everything non-major",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "groupName": "non-major dependencies"
+    },
+    {
+      "description": "Workflows from this repository: callers pin the line tag (@v0.1) on purpose, so don't convert it to a digest; follow new lines in one PR",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "spdolan/project-standards"
+      ],
+      "groupName": "spdolan/project-standards workflows",
+      "minimumReleaseAge": "0 days",
+      "pinDigests": false
+    }
+  ]
+}
