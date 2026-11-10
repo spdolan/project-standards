@@ -6,6 +6,6 @@
   "include-component-in-tag": false,
   "include-v-in-tag": true,
   "packages": {
-    ".": { "changelog-path": "CHANGELOG.md" }
+    ".": { "initial-version": "0.1.0", "changelog-path": "CHANGELOG.md" }
   }
 }
